@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# OS
+.DS_Store
+
+# Logs / temp
+*.log
+tmp/
+runs/
+outputs/
+
+# Data / Results
+data/
+results/
+*.parquet
+*.csv
+*.json
+*.pkl
+
+# Model / adapters / checkpoints
+*.bin
+*.safetensors
+*.pt
+*.ckpt
+
+# HF caches
+.cache/
+wandb/
+
+# ---- local-only folders in this project ----
+conda_envs/
+conda_pkgs/
+conda_pkgs_clean/
+pip_cache/
+logs/
+results/
+hf/
+apps/
+
+# if you have large data under basicquant
+basicquant/data/
+basicquant/results/
