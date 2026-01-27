@@ -229,7 +229,7 @@ def make_regime_probs(
     # soft controls
     temp: float = 1.0,
     prob_smooth_w: int = 3,       # 概率平滑（3周）
-    zscore_window_w: int = 104,   # 分数标准化窗口（2年，足够稳）
+    zscore_window_w: int = 104,   # 分数标准化窗口（2年）
 ) -> pd.DataFrame:
     """
     输出 index=reb_date, columns=[p_trending,p_choppy,p_volatile]
@@ -317,7 +317,7 @@ def make_regime_probs(
         out = out.div(s, axis=0).fillna(1.0 / 3.0)
 
     # --------------------
-    # 6) sanity checks (护栏)：一眼发现门控失真
+    # 6) sanity checks 
     # --------------------
     dom = out.idxmax(axis=1).value_counts(normalize=True)
     if dom.max() > 0.85:
@@ -375,7 +375,7 @@ def make_alpha_weights_by_regime_soft(
         rows.append(pd.Series(w, index=alphas, name=dt))
 
     wdf = pd.DataFrame(rows).sort_index()
-    wdf.index.name = "reb_date"   # ✅ 关键修复
+    wdf.index.name = "reb_date"   # 
     return wdf
 
 
@@ -430,7 +430,7 @@ def build_weekly_weights_buffered(
     #w_long = alpha_w_by_reb.loc[common_reb].reset_index().melt(id_vars="reb_date", var_name="alpha", value_name="w_alpha")
     tmp = alpha_w_by_reb.loc[common_reb].copy()
 
-# ✅ 兜底：如果 index 没名字，就强制叫 reb_date
+
     if tmp.index.name is None or str(tmp.index.name).strip() == "":
         tmp.index.name = "reb_date"
 
