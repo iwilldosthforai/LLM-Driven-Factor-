@@ -1,0 +1,25 @@
+{
+  "selected": [
+    "llm_vol_020",
+    "llm_vol_008",
+    "llm_rev_007",
+    "llm_rev_014",
+    "llm_mom_016"
+  ],
+  "weights": {
+    "llm_vol_020": 0.32,
+    "llm_vol_008": 0.2,
+    "llm_rev_007": 0.14,
+    "llm_rev_014": 0.2,
+    "llm_mom_016": 0.14
+  },
+  "constraints": {
+    "K": 5,
+    "CORR_MAX": 0.85,
+    "TURN_CAP": 1.0
+  },
+  "notes": [
+    "bayes_shrinkage: prior=metrics, confidence=0.600, metric_col=sharpe_net, temp=1.000",
+    "source_infer_json: /home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant/results/infer_lora_output.json"
+  ]
+}

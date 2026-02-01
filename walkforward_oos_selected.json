@@ -1,0 +1,354 @@
+[
+  {
+    "train_years": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014
+    ],
+    "test_years": [
+      2015
+    ],
+    "selected": [
+      "rev_5_rank",
+      "volchg_5_rank",
+      "volrel_20_rank",
+      "mom_20_rank",
+      "mom_60_rank",
+      "obv_20_rank",
+      "lowatr_14_rank",
+      "mean_revert_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.025871504524009065,
+      "volchg_5_rank": 0.015533514482214583,
+      "volrel_20_rank": 0.009132673553983341,
+      "mom_20_rank": 0.0019182974226479097,
+      "mom_60_rank": 0.0009509793869410293,
+      "obv_20_rank": -0.002164818448324455,
+      "lowatr_14_rank": -0.0034140080523813016,
+      "mean_revert_20_rank": -0.007467749175261822
+    }
+  },
+  {
+    "train_years": [
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+    ],
+    "test_years": [
+      2016
+    ],
+    "selected": [
+      "rev_5_rank",
+      "volchg_5_rank",
+      "mom_60_rank",
+      "lowatr_14_rank",
+      "mom_20_rank",
+      "obv_20_rank",
+      "mean_revert_20_rank",
+      "volrel_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.02733156174974467,
+      "volchg_5_rank": 0.014736283786275091,
+      "mom_60_rank": 0.010535551361266951,
+      "lowatr_14_rank": 0.006398015230568456,
+      "mom_20_rank": 0.0021372330717829477,
+      "obv_20_rank": 0.0010806067366925531,
+      "mean_revert_20_rank": 0.0003047841453214924,
+      "volrel_20_rank": -6.673098105892162e-05
+    }
+  },
+  {
+    "train_years": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2016
+    ],
+    "test_years": [
+      2017
+    ],
+    "selected": [
+      "rev_5_rank",
+      "volchg_5_rank",
+      "obv_20_rank",
+      "mom_60_rank",
+      "up_ratio_20",
+      "mom_20_rank",
+      "volrel_20_rank",
+      "mean_revert_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.023959033128015964,
+      "volchg_5_rank": 0.014995562141747274,
+      "obv_20_rank": 0.0011878120996298104,
+      "mom_60_rank": -0.0004156451169020903,
+      "up_ratio_20": -0.0037661873210881637,
+      "mom_20_rank": -0.004127919370228756,
+      "volrel_20_rank": -0.004957121483067431,
+      "mean_revert_20_rank": -0.005707433500116399
+    }
+  },
+  {
+    "train_years": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017
+    ],
+    "test_years": [
+      2018
+    ],
+    "selected": [
+      "rev_5_rank",
+      "volchg_5_rank",
+      "mean_revert_20_rank",
+      "mom_60_rank",
+      "up_ratio_20",
+      "volrel_20_rank",
+      "obv_20_rank",
+      "mom_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.02777524181155262,
+      "volchg_5_rank": 0.010224758696050896,
+      "mean_revert_20_rank": -0.002446170803909405,
+      "mom_60_rank": -0.003122633978593963,
+      "up_ratio_20": -0.005850778420621732,
+      "volrel_20_rank": -0.006737471788090805,
+      "obv_20_rank": -0.008346515065997328,
+      "mom_20_rank": -0.014671889016012553
+    }
+  },
+  {
+    "train_years": [
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "test_years": [
+      2019
+    ],
+    "selected": [
+      "rev_5_rank",
+      "volchg_5_rank",
+      "up_ratio_20",
+      "mom_60_rank",
+      "obv_20_rank",
+      "volrel_20_rank",
+      "mean_revert_20_rank",
+      "mom_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.022964436241545923,
+      "volchg_5_rank": 0.009636786883904782,
+      "up_ratio_20": 0.005413117188064254,
+      "mom_60_rank": 0.0025530405271182843,
+      "obv_20_rank": 0.0005594283849568933,
+      "volrel_20_rank": -0.0023513175016898853,
+      "mean_revert_20_rank": -0.002517599389256811,
+      "mom_20_rank": -0.007192296126866181
+    }
+  },
+  {
+    "train_years": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+    ],
+    "test_years": [
+      2020
+    ],
+    "selected": [
+      "rev_5_rank",
+      "mom_60_rank",
+      "volchg_5_rank",
+      "up_ratio_20",
+      "obv_20_rank",
+      "mean_revert_20_rank",
+      "volrel_20_rank",
+      "mom_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.020522909656853078,
+      "mom_60_rank": 0.006192033125030675,
+      "volchg_5_rank": 0.0028978301164290813,
+      "up_ratio_20": 0.0001674333412949641,
+      "obv_20_rank": -0.00020015173532122896,
+      "mean_revert_20_rank": -0.004449795347147958,
+      "volrel_20_rank": -0.0045342947155061755,
+      "mom_20_rank": -0.0055647639941693305
+    }
+  },
+  {
+    "train_years": [
+      2016,
+      2017,
+      2018,
+      2019,
+      2020
+    ],
+    "test_years": [
+      2021
+    ],
+    "selected": [
+      "rev_5_rank",
+      "rev_10_rank",
+      "volchg_5_rank",
+      "mom_60_rank",
+      "volrel_20_rank",
+      "obv_20_rank",
+      "up_ratio_20",
+      "liquidity_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.019892791780091682,
+      "rev_10_rank": 0.017181252625849297,
+      "volchg_5_rank": -0.000671434843330901,
+      "mom_60_rank": -0.0009660353167560284,
+      "volrel_20_rank": -0.0019337067103688869,
+      "obv_20_rank": -0.0036846965125500583,
+      "up_ratio_20": -0.00503256511419993,
+      "liquidity_20_rank": -0.007327313950042093
+    }
+  },
+  {
+    "train_years": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021
+    ],
+    "test_years": [
+      2022
+    ],
+    "selected": [
+      "rev_5_rank",
+      "rev_10_rank",
+      "mom_60_rank",
+      "up_ratio_20",
+      "obv_20_rank",
+      "volrel_20_rank",
+      "volchg_5_rank",
+      "liquidity_20_rank"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.014825635530231387,
+      "rev_10_rank": 0.012765168506555114,
+      "mom_60_rank": 0.004709275056436906,
+      "up_ratio_20": -0.0008976675103551658,
+      "obv_20_rank": -0.0012164640340500419,
+      "volrel_20_rank": -0.001358188155036694,
+      "volchg_5_rank": -0.0033916615934691157,
+      "liquidity_20_rank": -0.006092974179504405
+    }
+  },
+  {
+    "train_years": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+    ],
+    "test_years": [
+      2023
+    ],
+    "selected": [
+      "rev_5_rank",
+      "obv_20_rank",
+      "mom_60_rank",
+      "mom_20_rank",
+      "up_ratio_20",
+      "volrel_20_rank",
+      "low_downvol_20_rank",
+      "position_20"
+    ],
+    "alpha_scores": {
+      "rev_5_rank": 0.01541927446727764,
+      "obv_20_rank": 0.011945134131132873,
+      "mom_60_rank": 0.009298228418466446,
+      "mom_20_rank": 0.008719354842191595,
+      "up_ratio_20": 0.008549000595359717,
+      "volrel_20_rank": 0.007216395603917888,
+      "low_downvol_20_rank": 0.004996005392206925,
+      "position_20": -0.003107463558156074
+    }
+  },
+  {
+    "train_years": [
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+    ],
+    "test_years": [
+      2024
+    ],
+    "selected": [
+      "position_20",
+      "mom_60_rank",
+      "liquidity_20_rank",
+      "up_ratio_20",
+      "mom_20_rank",
+      "obv_20_rank",
+      "volchg_5_rank",
+      "volrel_20_rank"
+    ],
+    "alpha_scores": {
+      "position_20": 0.00838198731986478,
+      "mom_60_rank": 0.004591624165232424,
+      "liquidity_20_rank": 0.003576113911252156,
+      "up_ratio_20": 0.0032295647546391,
+      "mom_20_rank": 0.003075993802945414,
+      "obv_20_rank": -0.0007490575539148749,
+      "volchg_5_rank": -0.0007937333946472797,
+      "volrel_20_rank": -0.0008510775005111227
+    }
+  },
+  {
+    "train_years": [
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+    ],
+    "test_years": [
+      2025
+    ],
+    "selected": [
+      "position_20",
+      "mom_60_rank",
+      "liquidity_20_rank",
+      "breakout_20_rank",
+      "mom_20_rank",
+      "volchg_5_rank",
+      "obv_20_rank",
+      "low_downvol_20_rank"
+    ],
+    "alpha_scores": {
+      "position_20": 0.01720299679586,
+      "mom_60_rank": 0.01417116743455482,
+      "liquidity_20_rank": 0.01359139565979735,
+      "breakout_20_rank": 0.007413764593446114,
+      "mom_20_rank": 0.0063253819351380336,
+      "volchg_5_rank": 0.00365202313696659,
+      "obv_20_rank": 0.0036419909290872654,
+      "low_downvol_20_rank": 0.0034784809140988465
+    }
+  }
+]
