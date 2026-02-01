@@ -7,13 +7,13 @@ METRICS_PATH = "results/alpha_metrics.csv"
 CORR_PATH    = "results/alpha_corr.npy"
 OUT_JSON     = "results/selected_alphas.json"
 
-# 你可以后面再调这些阈值
+
 #K = 10
 #MIN_ICIR = 0.0
 #MIN_STAB = 0.55
-#MAX_TURNOVER = 1.2        # 周换手上限（先保守一点）
-#MIN_MDD_NET = -0.99       # 过滤掉明显爆炸(-1)的
-#MAX_ABS_CORR = 0.70       # 去相关阈值
+#MAX_TURNOVER = 1.2        
+#MIN_MDD_NET = -0.99       
+#MAX_ABS_CORR = 0.70       
 
 K = 10
 MIN_ICIR = -1e9
@@ -43,7 +43,7 @@ def main():
     )
     cand = m.loc[filt].copy()
 
-    # 如果过滤太严导致候选太少，就放宽 turnover（不会问你确认，直接自动放宽）
+ 
     if len(cand) < K:
         cand = m.loc[
             (m["ICIR_5d"] >= MIN_ICIR) &
@@ -52,9 +52,6 @@ def main():
             (m["n_weeks"] >= 30)
         ].copy()
 
-    # 2) 综合打分（可调整权重）
-    # 目标：预测力 + 稳定性 + 成本后表现 - 换手惩罚
-  #
 
     cand["score"] = (
     1.0 * cand["mean_rankIC_5d"] +
