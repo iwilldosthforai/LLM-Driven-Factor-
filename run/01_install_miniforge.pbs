@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -N install_mf
+#PBS -q normal
+#PBS -l select=1:ncpus=2:mem=8gb
+#PBS -l walltime=00:30:00
+#PBS -j oe
+#PBS -P personal
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/install_mf.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/install_mf.err
+
+set -euo pipefail
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+cd "$BASE/run"
+
+PREFIX="$BASE/apps/miniforge3"
+
+if [ -x "$PREFIX/bin/conda" ]; then
+  echo "Miniforge already exists at $PREFIX"
+  "$PREFIX/bin/conda" --version
+  exit 0
+fi
+
+echo "Installing Miniforge to: $PREFIX"
+mkdir -p "$BASE/apps"
+
+curl -L -o Miniforge3.sh \
+  https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+
+bash Miniforge3.sh -b -p "$PREFIX"
+
+echo "DONE"
+"$PREFIX/bin/conda" --version
+EOF

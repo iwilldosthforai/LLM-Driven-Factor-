@@ -1,0 +1,77 @@
+#!/bin/bash
+#PBS -N bt11_plot_5way
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=4:mem=16gb
+#PBS -l walltime=00:30:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_11_plot_5way.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_11_plot_5way.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+ENV=$BASE/conda_envs/qwen311_clean
+PY=$BASE/run/11_plot_nav_compare_5way.py
+
+M1=$PROJ/results/portfolio_nav.csv
+M2=$PROJ/results/portfolio_nav_llmweights.csv
+M3=$PROJ/results/portfolio_nav_llmweights_bayes_ema.csv
+M4=$PROJ/results/portfolio_nav_llmweights_bayes_regime.csv
+M5=$PROJ/results/portfolio_nav_llmweights_bayes_regime_buffer_turnoverctrl.csv
+
+OUT_DIR=$PROJ/results
+PREFIX=fig_5way
+ALIGN_FREQ=W-FRI
+ROLL_WINDOW=52
+
+module purge
+module load gcc/11.4.0-nscc
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+# ensure matplotlib exists
+python - << 'PY'
+import importlib, sys
+try:
+    importlib.import_module("matplotlib")
+    print("[INFO] matplotlib ok")
+    sys.exit(0)
+except Exception as e:
+    print("[WARN] matplotlib not found:", e)
+    sys.exit(1)
+PY
+
+if [ $? -ne 0 ]; then
+  echo "[INFO] Installing matplotlib into env (one-time)..."
+  conda install -y matplotlib
+fi
+
+# sanity checks
+for f in "$PY" "$M1" "$M2" "$M3" "$M4" "$M5"; do
+  if [ ! -f "$f" ]; then
+    echo "[FATAL] missing: $f"
+    exit 2
+  fi
+done
+
+echo "[INFO] Running 5-way plots..."
+python "$PY" \
+  --m1 "$M1" \
+  --m2 "$M2" \
+  --m3 "$M3" \
+  --m4 "$M4" \
+  --m5 "$M5" \
+  --names "no_llm,llm,llm_bayes_ema,regime,regime_buffer_toctrl" \
+  --align_freq "$ALIGN_FREQ" \
+  --roll_window "$ROLL_WINDOW" \
+  --out_dir "$OUT_DIR" \
+  --prefix "$PREFIX"
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs:"
+ls -lah "$OUT_DIR" | grep -E "${PREFIX}_|summary_5way" || true

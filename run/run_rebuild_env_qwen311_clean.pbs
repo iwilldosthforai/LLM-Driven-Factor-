@@ -1,0 +1,68 @@
+#!/bin/bash
+#PBS -N rebuild_qwen311
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/rebuild_qwen311_clean.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/rebuild_qwen311_clean.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+CONDA=$BASE/apps/miniforge3/bin/conda
+
+# 你原来的 env 已经变成 py3.6，建议新建一个干净 env（不要复用 qwen311）
+NEW_ENV=$BASE/conda_envs/qwen311_clean
+
+module purge
+module load gcc/11.4.0-nscc
+
+echo "[INFO] conda: $CONDA"
+$CONDA --version
+
+# 为了避免你之前的 conda 包缓存损坏问题：清理缓存（安全，不会动你的模型/代码）
+echo "[INFO] conda clean ..."
+$CONDA clean -a -y || true
+
+# 如果同名 env 已存在，先删（避免残留污染）
+if [ -d "$NEW_ENV" ]; then
+  echo "[WARN] env exists, removing: $NEW_ENV"
+  rm -rf "$NEW_ENV"
+fi
+
+echo "[INFO] Creating new env: $NEW_ENV"
+$CONDA create -y -p "$NEW_ENV" -c conda-forge python=3.11 pip
+
+PY=$NEW_ENV/bin/python
+echo "[INFO] Python sanity:"
+$PY -V
+$PY -m pip -V
+$PY -c "import sys; print('exe=', sys.executable); print('ver=', sys.version)"
+
+echo "[INFO] Installing core deps for SFT/RLHF..."
+$PY -m pip install -U "pip<25" setuptools wheel
+
+# SFT/RLHF 常用栈：transformers / datasets / accelerate / peft / trl
+$PY -m pip install -U \
+  "transformers>=4.45.0" \
+  datasets accelerate peft trl \
+  sentencepiece \
+  safetensors
+
+# 如果你要用 4bit/8bit 或者 LoRA 省显存，装 bitsandbytes（A100 通常可用）
+$PY -m pip install -U bitsandbytes || true
+
+echo "[INFO] Import test..."
+$PY - <<'PY'
+import transformers, datasets
+print("transformers:", transformers.__version__)
+print("datasets:", datasets.__version__)
+PY
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] NEW_ENV=$NEW_ENV"

@@ -1,0 +1,44 @@
+
+#PBS -N fix_pyarrow
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=2:mem=8gb
+#PBS -l walltime=00:20:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/fix_pyarrow.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/fix_pyarrow.err
+
+set -euo pipefail
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+
+module purge
+module load gcc/11.4.0-nscc
+
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+unset PYTHONHOME PYTHONPATH PYTHONUSERBASE PYTHONSTARTUP || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+# 关键：不要在项目目录里 import，避免同名文件 shadow
+cd /tmp
+
+echo "[INFO] Before fix:"
+python - <<'PY'
+import pyarrow as pa
+print("pyarrow file:", getattr(pa, "__file__", None))
+print("has __version__:", hasattr(pa, "__version__"))
+PY
+
+echo "[INFO] Remove possibly broken/mixed installs:"
+conda remove -y pyarrow || true
+python -m pip uninstall -y pyarrow || true
+
+echo "[INFO] Install pyarrow pinned (conda-forge):"
+conda install -y -c conda-forge "pyarrow=16.*"
+
+echo "[INFO] Smoke tests:"
+python -c "import pyarrow as pa; print('pyarrow', pa.__version__, 'file', pa.__file__)"
+python -c "import pandas as pd; import pyarrow as pa; print('pandas', pd.__version__, 'pyarrow', pa.__version__)"
+

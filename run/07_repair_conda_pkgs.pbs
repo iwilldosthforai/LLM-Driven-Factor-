@@ -1,0 +1,66 @@
+
+#PBS -N repair_conda_pkgs
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=2:mem=8gb
+#PBS -l walltime=00:30:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/repair_conda_pkgs.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/repair_conda_pkgs.err
+
+set -euo pipefail
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+
+module purge
+module load gcc/11.4.0-nscc
+
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+unset PYTHONHOME PYTHONPATH PYTHONUSERBASE PYTHONSTARTUP || true
+
+# 重要：把 pkgs 缓存挪到你自己的目录，避免 miniforge/pkgs 一直被污染
+export CONDA_PKGS_DIRS=$BASE/conda_pkgs
+mkdir -p "$CONDA_PKGS_DIRS"
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+echo "[INFO] conda: $(conda --version)"
+echo "[INFO] env: $CONDA_PREFIX"
+echo "[INFO] CONDA_PKGS_DIRS=$CONDA_PKGS_DIRS"
+
+# 1) 删掉 miniforge 自带 pkgs 里已损坏的那几类包（用通配符避免版本号不一致）
+PKGS=$BASE/apps/miniforge3/pkgs
+echo "[INFO] Removing corrupted pkgs under: $PKGS"
+rm -rf \
+  "$PKGS"/gflags-* \
+  "$PKGS"/snappy-* \
+  "$PKGS"/glog-* \
+  "$PKGS"/libcrc32c-* || true
+
+# 同时删掉对应 tarball（如果存在）
+rm -f "$PKGS"/gflags-*.conda "$PKGS"/gflags-*.tar.bz2 || true
+rm -f "$PKGS"/snappy-*.conda "$PKGS"/snappy-*.tar.bz2 || true
+rm -f "$PKGS"/glog-*.conda "$PKGS"/glog-*.tar.bz2 || true
+rm -f "$PKGS"/libcrc32c-*.conda "$PKGS"/libcrc32c-*.tar.bz2 || true
+
+# 2) 清理索引/缓存，强制重新拉取
+echo "[INFO] conda clean ..."
+conda clean -a -y
+
+# 3) 重新装（固定版本，减少 solver 乱跳）
+echo "[INFO] reinstall pyarrow/pandas ..."
+conda install -y -c conda-forge "pyarrow=16.*" pandas
+
+# 4) Smoke test（注意：不要在项目目录）
+cd /tmp
+python - <<'PY'
+import pyarrow as pa
+import pandas as pd
+print("pyarrow:", pa.__version__, "file:", pa.__file__)
+print("pandas:", pd.__version__)
+PY
+
+echo "[INFO] DONE"
+
+

@@ -1,0 +1,35 @@
+#!/bin/bash
+#PBS -N dl_qwen
+#PBS -q normal
+#PBS -l select=1:ncpus=4:mem=32gb
+#PBS -l walltime=03:00:00
+#PBS -j oe
+#PBS -P personal
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/dl_qwen.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/dl_qwen.err
+
+set -euo pipefail
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+cd "$BASE/run"
+
+module purge
+module load gcc/11.4.0-nscc
+
+MF="$BASE/apps/miniforge3"
+ENV_DIR="$BASE/conda_envs/qwen311"
+source "$MF/etc/profile.d/conda.sh"
+conda activate "$ENV_DIR"
+
+export HF_HOME="$BASE/hf/home"
+export HF_HUB_CACHE="$BASE/hf/cache"
+mkdir -p "$BASE/hf/models"
+
+python - <<'PY'
+from huggingface_hub import snapshot_download
+repo_id="Qwen/Qwen2.5-7B-Instruct"
+local_dir="/scratch/users/ntu/shuyan00/nscc_qwen/hf/models/Qwen2.5-7B-Instruct"
+snapshot_download(repo_id=repo_id, local_dir=local_dir, local_dir_use_symlinks=False)
+print("DOWNLOADED to:", local_dir)
+PY
+
+

@@ -1,0 +1,54 @@
+#!/bin/bash
+#PBS -N deps_sft
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_06_install_sft_deps.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_06_install_sft_deps.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+python -V
+pip -V
+
+# 建议：把缓存放 scratch，避免写 HOME
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export PIP_CACHE_DIR=$BASE/pip_cache
+mkdir -p "$PIP_CACHE_DIR"
+
+# 训练依赖（QLoRA 需要 bitsandbytes）
+pip install -U \
+  "transformers>=4.45.0" \
+  "accelerate>=0.34.0" \
+  "datasets>=2.20.0" \
+  "peft>=0.12.0" \
+  "trl>=0.9.6" \
+  "bitsandbytes>=0.43.3" \
+  "safetensors" \
+  "sentencepiece"
+
+python - <<'PY'
+import transformers, accelerate, datasets, peft, trl
+print("transformers", transformers.__version__)
+print("accelerate", accelerate.__version__)
+print("datasets", datasets.__version__)
+print("peft", peft.__version__)
+print("trl", trl.__version__)
+print("OK")
+PY
+
+echo "[INFO] Done: $(date)"

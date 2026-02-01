@@ -1,0 +1,107 @@
+#!/bin/bash
+#PBS -N bt09_llm_w
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=16:mem=64gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_09_apply_llm_weights_backtest.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_09_apply_llm_weights_backtest.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/09_apply_llm_weights_backtest_v2.py
+ENV=$BASE/conda_envs/qwen311_clean
+
+PANEL=$PROJ/data/processed/panel.parquet
+SEED_SIG=$PROJ/data/processed/signals.parquet
+LLM_DIR=$PROJ/data/processed/signals_llm
+INFER_JSON=$PROJ/results/infer_lora_output.json
+METRICS=$PROJ/results/alpha_metrics.csv
+CAND_JSONL=$PROJ/results/llm_candidates.jsonl
+
+OUT_NAV=$PROJ/results/portfolio_nav_llmweights.csv
+OUT_SUM=$PROJ/results/portfolio_summary_llmweights.txt
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ=$PROJ"
+echo "[INFO] PY=$PY"
+echo "[INFO] ENV=$ENV"
+echo "[INFO] panel=$PANEL"
+echo "[INFO] seed_signals=$SEED_SIG"
+echo "[INFO] llm_dir=$LLM_DIR"
+echo "[INFO] infer_json=$INFER_JSON"
+echo "[INFO] metrics=$METRICS"
+echo "[INFO] candidates_jsonl=$CAND_JSONL"
+echo "[INFO] out_nav=$OUT_NAV"
+echo "[INFO] out_summary=$OUT_SUM"
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export TOKENIZERS_PARALLELISM=false
+
+cd $PROJ
+
+# ---------- sanity checks ----------
+if [ ! -f "$PY" ]; then
+  echo "[FATAL] missing script: $PY"
+  exit 2
+fi
+if [ ! -f "$PANEL" ]; then
+  echo "[FATAL] missing panel: $PANEL"
+  exit 2
+fi
+if [ ! -f "$SEED_SIG" ]; then
+  echo "[FATAL] missing seed signals: $SEED_SIG"
+  exit 2
+fi
+if [ ! -f "$INFER_JSON" ]; then
+  echo "[FATAL] missing infer json: $INFER_JSON (run 08 inference first)"
+  exit 2
+fi
+if [ ! -f "$METRICS" ]; then
+  echo "[WARN] missing metrics csv: $METRICS (direction will fallback to +1)"
+fi
+if [ -d "$LLM_DIR" ]; then
+  echo "[INFO] found LLM signals dir: $LLM_DIR"
+  if ! find "$LLM_DIR" -type f -name "*.parquet" | head -n 1 | grep -q . ; then
+    echo "[WARN] LLM signals dir exists but no parquet files found inside."
+  fi
+else
+  echo "[WARN] LLM signals dir not found (seed-only signals will be used)."
+fi
+if [ ! -f "$CAND_JSONL" ]; then
+  echo "[WARN] candidates jsonl not found: $CAND_JSONL (only affects 00/08, not 09)"
+fi
+
+# ---------- run ----------
+echo "[INFO] Running backtest 09..."
+python "$PY" \
+  --panel "$PANEL" \
+  --seed_signals "$SEED_SIG" \
+  --llm_dir "$LLM_DIR" \
+  --infer_json "$INFER_JSON" \
+  --metrics_csv "$METRICS" \
+  --reb_freq W-FRI \
+  --top_q 0.2 \
+  --trade_lag_bdays 1 \
+  --cost_bps 10 \
+  --clip_z 6.0 \
+  --out_nav "$OUT_NAV" \
+  --out_summary "$OUT_SUM"
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs (tail):"
+ls -lah $PROJ/results | tail -n 80

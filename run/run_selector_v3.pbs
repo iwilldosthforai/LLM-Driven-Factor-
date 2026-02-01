@@ -1,0 +1,86 @@
+#!/bin/bash
+#PBS -N select04
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=8:mem=16gb
+#PBS -l walltime=00:30:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_04_select_alphas_v3.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_04_select_alphas_v3.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ_ROOT=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+SCRIPT_PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/04_select_alphas_v3.py
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ_ROOT=$PROJ_ROOT"
+echo "[INFO] SCRIPT_PY=$SCRIPT_PY"
+
+# Locale（保留）
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export PYTHONUTF8=1
+
+# ❌ 删掉/不要用 safe-path（这是你 encodings 崩溃的根因）
+unset PYTHONSAFEPATH || true
+
+# 清理可能污染 python 的变量（保留）
+unset PYTHONHOME || true
+unset PYTHONPATH || true
+unset PYTHONUSERBASE || true
+unset PYTHONSTARTUP || true
+
+module purge
+module load gcc/11.4.0-nscc
+# 这个 job 不用 GPU，cuda 可不加载；保留也无所谓
+# module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+echo "[INFO] which python: $(which python)"
+python -V
+
+# encodings 自检：如果这里过了，就不会再出现 init_fs_encoding 崩溃
+python - <<'PY'
+import sys, encodings
+print("[INFO] encodings OK")
+print("[INFO] sys.executable:", sys.executable)
+print("[INFO] sys.path head:", sys.path[:5])
+PY
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+
+cd "$PROJ_ROOT"
+
+METRICS=$PROJ_ROOT/results/alpha_metrics.csv
+CORR=$PROJ_ROOT/results/alpha_corr.npy
+
+echo "[INFO] metrics=$METRICS"
+echo "[INFO] corr=$CORR"
+
+if [ ! -f "$METRICS" ]; then
+  echo "[FATAL] missing alpha_metrics.csv: $METRICS"
+  exit 2
+fi
+
+if [ ! -f "$CORR" ]; then
+  echo "[FATAL] missing alpha_corr.npy: $CORR"
+  exit 2
+fi
+
+echo "[INFO] results before:"
+ls -lah "$PROJ_ROOT/results" | tail -n 80
+
+echo "[INFO] Running 04_select_alphas_v3.py ..."
+python "$SCRIPT_PY"
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs should be in: $PROJ_ROOT/results/"
+ls -lah "$PROJ_ROOT/results" | tail -n 80

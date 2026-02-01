@@ -1,0 +1,68 @@
+#!/bin/bash
+#PBS -N dpo07c_train
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=16:mem=64gb:ngpus=2
+#PBS -l walltime=08:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_07c_dpo_train.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_07c_dpo_train.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/07c_dpo_train.py
+ENV=$BASE/conda_envs/qwen311_clean
+
+MODEL=/scratch/users/ntu/shuyan00/nscc_qwen/hf/models/Qwen2.5-7B-Instruct
+SFT_ADAPTER=$PROJ/results/sft_lora_qwen
+DPO_PAIRS=$PROJ/results/dpo_pairs.jsonl
+OUT_DIR=$PROJ/results/dpo_lora_qwen
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export TOKENIZERS_PARALLELISM=false
+
+cd $PROJ
+
+echo "[INFO] PROJ=$PROJ"
+echo "[INFO] PY=$PY"
+echo "[INFO] MODEL=$MODEL"
+echo "[INFO] SFT_ADAPTER=$SFT_ADAPTER"
+echo "[INFO] DPO_PAIRS=$DPO_PAIRS"
+echo "[INFO] OUT_DIR=$OUT_DIR"
+
+# sanity
+if [ ! -f "$DPO_PAIRS" ]; then
+  echo "[FATAL] missing dpo pairs: $DPO_PAIRS (run 07b first)"
+  exit 2
+fi
+
+python "$PY" \
+  --proj_root "$PROJ" \
+  --train_jsonl results/dpo_pairs.jsonl \
+  --base_model_dir "$MODEL" \
+  --sft_adapter_dir "$SFT_ADAPTER" \
+  --out_dir results/dpo_lora_qwen \
+  --max_steps 800 \
+  --bsz 1 \
+  --grad_accum 16 \
+  --lr 1e-4 \
+  --warmup_steps 50 \
+  --max_prompt_len 1024 \
+  --max_completion_len 512 \
+  --beta 0.1
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] OUT_DIR preview:"
+ls -lah "$OUT_DIR" | head -n 50 || true

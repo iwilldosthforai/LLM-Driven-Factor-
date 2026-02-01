@@ -1,0 +1,107 @@
+#!/bin/bash
+#PBS -N bt09c_regime_buffer
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=4:mem=24gb
+#PBS -l walltime=00:45:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_09c_regime_buffer.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_09c_regime_buffer.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+ENV=$BASE/conda_envs/qwen311_clean
+PY=$BASE/run/09c_apply_llm_weights_backtest_regime_buffer.py
+
+PANEL=$PROJ/data/processed/panel.parquet
+SEED_SIG=$PROJ/data/processed/signals.parquet
+LLM_DIR=$PROJ/data/processed/signals_llm
+INFER_JSON=$PROJ/results/infer_lora_output_bayes.json
+METRICS=$PROJ/results/alpha_metrics.csv
+
+OUT_DIR=$PROJ/results
+OUT_NAV=$OUT_DIR/portfolio_nav_llmweights_bayes_regime_buffer_turnoverctrl.csv
+OUT_SUM=$OUT_DIR/portfolio_summary_llmweights_bayes_regime_buffer_turnoverctrl.txt
+OUT_REGIME=$OUT_DIR/regime_probs_09c.csv
+OUT_ETA=$OUT_DIR/eta_series_09c.csv
+
+REB_FREQ=W-FRI
+TRADE_LAG=1
+
+module purge
+module load gcc/11.4.0-nscc
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+cd $PROJ
+
+# sanity checks
+for f in "$PY" "$PANEL" "$SEED_SIG" "$INFER_JSON"; do
+  if [ ! -f "$f" ]; then
+    echo "[FATAL] missing: $f"
+    exit 2
+  fi
+done
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ=$PROJ"
+echo "[INFO] ENV=$ENV"
+echo "[INFO] PY=$PY"
+echo "[INFO] PANEL=$PANEL"
+echo "[INFO] SEED_SIG=$SEED_SIG"
+echo "[INFO] LLM_DIR=$LLM_DIR"
+echo "[INFO] INFER_JSON=$INFER_JSON"
+echo "[INFO] METRICS=$METRICS"
+echo "[INFO] OUT_NAV=$OUT_NAV"
+echo "[INFO] OUT_SUM=$OUT_SUM"
+echo "[INFO] OUT_REGIME=$OUT_REGIME"
+echo "[INFO] OUT_ETA=$OUT_ETA"
+echo "[INFO] REB_FREQ=$REB_FREQ TRADE_LAG=$TRADE_LAG"
+
+echo "[INFO] Running 09c..."
+python "$PY" \
+  --panel "$PANEL" \
+  --seed_signals "$SEED_SIG" \
+  --llm_dir "$LLM_DIR" \
+  --infer_json "$INFER_JSON" \
+  --metrics_csv "$METRICS" \
+  --reb_freq "$REB_FREQ" \
+  --trade_lag_bdays "$TRADE_LAG" \
+  --top_q 0.20 \
+  --buffer_out_q 0.30 \
+  --min_names 10 \
+  --cost_bps 10.0 \
+  --slippage_bps 0.0 \
+  --clip_z 6.0 \
+  --weighting score \
+  --turnover_target 0.28 \
+  --turnover_band 0.03 \
+  --eta_init 0.35 \
+  --eta_min 0.05 \
+  --eta_max 0.90 \
+  --step_max 0.03 \
+  --regime_temp 0.70 \
+  --regime_vol_window_w 13 \
+  --regime_trend_window_w 26 \
+  --mult_trend_mom 1.35 \
+  --mult_trend_rev 0.85 \
+  --mult_trend_vol 1.00 \
+  --mult_chop_mom 0.75 \
+  --mult_chop_rev 1.30 \
+  --mult_chop_vol 1.00 \
+  --mult_vol_mom 0.65 \
+  --mult_vol_rev 1.00 \
+  --mult_vol_vol 1.35 \
+  --out_nav "$OUT_NAV" \
+  --out_summary "$OUT_SUM" \
+  --out_regime "$OUT_REGIME" \
+  --out_eta "$OUT_ETA"
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs:"
+ls -lah "$OUT_DIR" | grep -E "portfolio_nav_llmweights_bayes_regime_buffer_turnoverctrl|portfolio_summary_llmweights_bayes_regime_buffer_turnoverctrl|regime_probs_09c|eta_series_09c" || true

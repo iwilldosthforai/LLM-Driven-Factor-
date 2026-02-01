@@ -1,0 +1,69 @@
+#!/bin/bash
+#PBS -N metrics03
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=16:mem=64gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_03_metrics_engine.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_03_metrics_engine.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ_ROOT=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+SCRIPT_PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/03_metrics_engine.py
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ_ROOT=$PROJ_ROOT"
+echo "[INFO] SCRIPT_PY=$SCRIPT_PY"
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+
+# 关键：在 basicquant 目录运行，确保 data/ 和 results/ 相对路径正确
+cd $PROJ_ROOT
+
+PANEL=$PROJ_ROOT/data/processed/panel.parquet
+SEED_SIG=$PROJ_ROOT/data/processed/signals.parquet
+LLM_DIR=$PROJ_ROOT/data/processed/signals_llm
+
+echo "[INFO] panel=$PANEL"
+echo "[INFO] seed_signals=$SEED_SIG"
+echo "[INFO] llm_dir=$LLM_DIR"
+
+if [ ! -f "$PANEL" ]; then
+  echo "[FATAL] missing panel: $PANEL"
+  exit 2
+fi
+
+if [ ! -f "$SEED_SIG" ]; then
+  echo "[FATAL] missing seed signals: $SEED_SIG"
+  exit 2
+fi
+
+if [ -d "$LLM_DIR" ]; then
+  echo "[INFO] found LLM signals dir: $LLM_DIR"
+  if ! find "$LLM_DIR" -type f -name "*.parquet" | head -n 1 | grep -q . ; then
+    echo "[WARN] LLM signals dir exists but no parquet files found inside."
+  fi
+else
+  echo "[WARN] LLM signals dir not found (will run seed-only metrics)."
+fi
+
+echo "[INFO] Running 03_metrics_engine.py ..."
+python $SCRIPT_PY
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs should be in: $PROJ_ROOT/results/"
+ls -lah $PROJ_ROOT/results | tail -n 50

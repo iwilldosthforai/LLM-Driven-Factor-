@@ -1,0 +1,54 @@
+#!/bin/bash
+#PBS -N rebuild_env
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/rebuild_env.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/rebuild_env.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+CONDA=$BASE/apps/miniforge3/bin/conda
+NEW_ENV=$BASE/conda_envs/qwen312
+
+module purge
+module load gcc/11.4.0-nscc
+
+# 建议清理掉可能损坏的 python 包缓存（只删 python 包目录，不会动你模型）
+echo "[INFO] conda pkgs dir: $BASE/apps/miniforge3/pkgs"
+ls -lah $BASE/apps/miniforge3/pkgs | head -n 30
+
+# 如果你担心误删，可以注释这两行；但你之前已经出现 conda verification error，强烈建议清一次
+rm -rf $BASE/apps/miniforge3/pkgs/python-3.11.* || true
+rm -rf $BASE/apps/miniforge3/pkgs/*_cpython* || true
+
+echo "[INFO] Creating new env: $NEW_ENV"
+$CONDA create -y -p "$NEW_ENV" -c conda-forge python=3.11 pip
+
+PY=$NEW_ENV/bin/python
+echo "[INFO] Python check:"
+$PY -V
+$PY -m pip -V
+
+echo "[INFO] Installing SFT deps..."
+$PY -m pip install -U "pip<25" setuptools wheel
+$PY -m pip install -U \
+  "transformers>=4.45.0" \
+  datasets accelerate peft trl \
+  sentencepiece \
+  bitsandbytes
+
+echo "[INFO] Quick import test..."
+$PY - <<'PY'
+import torch, transformers
+print("torch:", torch.__version__)
+print("transformers:", transformers.__version__)
+PY
+
+echo "[INFO] Done: $(date)"

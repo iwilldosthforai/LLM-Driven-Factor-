@@ -1,0 +1,36 @@
+#!/bin/bash
+#PBS -N run_qwen
+#PBS -q normal
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -P personal
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_qwen.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_qwen.err
+
+set -euo pipefail
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+cd "$BASE/run"
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2
+
+MF="$BASE/apps/miniforge3"
+ENV_DIR="$BASE/conda_envs/qwen311"
+source "$MF/etc/profile.d/conda.sh"
+conda activate "$ENV_DIR"
+
+python - <<'PY'
+import torch
+print("torch:", torch.__version__)
+print("cuda available:", torch.cuda.is_available())
+print("gpu:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
+PY
+
+export HF_HOME="$BASE/hf/home"
+export HF_HUB_CACHE="$BASE/hf/cache"
+export TRANSFORMERS_CACHE="$BASE/hf/cache"
+export QWEN_MODEL_DIR="$BASE/hf/models/Qwen2.5-7B-Instruct"
+
+python infer_qwen.py

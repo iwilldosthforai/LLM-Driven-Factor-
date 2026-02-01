@@ -1,0 +1,108 @@
+#!/bin/bash
+#PBS -N bt10_plot_3way
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=4:mem=16gb
+#PBS -l walltime=00:30:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_10_plot_3way.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_10_plot_3way.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+ENV=$BASE/conda_envs/qwen311_clean
+
+# ✅ 这里指向你的 3way plot 脚本（按你原来的习惯放在 $BASE/run）
+PY=$BASE/run/10_plot_nav_compare_3way.py
+# 如果你的脚本实际在工程目录下，用这行替换上一行：
+# PY=$PROJ/run/10_plot_nav_compare_3way.py
+
+# inputs
+NO_LLM=$PROJ/results/portfolio_nav.csv
+LLM=$PROJ/results/portfolio_nav_llmweights.csv
+LLM_BAYES=$PROJ/results/portfolio_nav_llmweights_bayes_ema.csv
+
+# outputs
+OUT_DIR=$PROJ/results
+PREFIX=fig_3way
+
+# alignment (关键：统一三条曲线到同一个周频锚点)
+ALIGN_FREQ="W-FRI"
+ROLL_WINDOW=52
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ=$PROJ"
+echo "[INFO] ENV=$ENV"
+echo "[INFO] PY=$PY"
+echo "[INFO] NO_LLM=$NO_LLM"
+echo "[INFO] LLM=$LLM"
+echo "[INFO] LLM_BAYES=$LLM_BAYES"
+echo "[INFO] OUT_DIR=$OUT_DIR"
+echo "[INFO] PREFIX=$PREFIX"
+echo "[INFO] ALIGN_FREQ=$ALIGN_FREQ"
+echo "[INFO] ROLL_WINDOW=$ROLL_WINDOW"
+
+module purge
+module load gcc/11.4.0-nscc
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+cd $PROJ
+
+# ---------- sanity checks ----------
+for f in "$PY" "$NO_LLM" "$LLM" "$LLM_BAYES"; do
+  if [ ! -f "$f" ]; then
+    echo "[FATAL] missing: $f"
+    exit 2
+  fi
+done
+
+# ---------- ensure matplotlib exists ----------
+python - << 'PY'
+import importlib, sys
+try:
+    importlib.import_module("matplotlib")
+    print("[INFO] matplotlib ok")
+    sys.exit(0)
+except Exception as e:
+    print("[WARN] matplotlib not found:", e)
+    sys.exit(1)
+PY
+
+if [ $? -ne 0 ]; then
+  echo "[INFO] Installing matplotlib into env (one-time)..."
+  # conda install 更稳（适合 HPC），并避免交互
+  conda install -y matplotlib || true
+fi
+
+# 再检查一次（避免 conda install 失败但继续跑导致报错）
+python - << 'PY'
+import importlib, sys
+try:
+    importlib.import_module("matplotlib")
+    print("[INFO] matplotlib ok after install")
+    sys.exit(0)
+except Exception as e:
+    print("[FATAL] matplotlib still missing:", e)
+    sys.exit(2)
+PY
+
+echo "[INFO] Running 3-way plots..."
+python "$PY" \
+  --no_llm "$NO_LLM" \
+  --llm "$LLM" \
+  --llm_bayes "$LLM_BAYES" \
+  --out_dir "$OUT_DIR" \
+  --prefix "$PREFIX" \
+  --roll_window "$ROLL_WINDOW" \
+  --align_freq "$ALIGN_FREQ"
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs:"
+ls -lah "$OUT_DIR" | grep -E "${PREFIX}|summary_3way" || true

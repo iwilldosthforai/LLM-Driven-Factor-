@@ -1,0 +1,44 @@
+#!/bin/bash
+#PBS -N repair_py311
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=4:mem=16gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/repair_py311.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/repair_py311.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+CONDA=$BASE/apps/miniforge3/bin/conda
+ENV=$BASE/conda_envs/qwen311
+
+module purge
+module load gcc/11.4.0-nscc
+
+echo "[INFO] conda=$CONDA"
+echo "[INFO] env=$ENV"
+$CONDA --version
+
+echo "[INFO] Before repair: list encodings dir"
+ls -lah $ENV/lib/python3.11/encodings 2>&1 || true
+
+# 关键：强制重装 python 标准库（encodings 会回归）
+echo "[INFO] Force reinstall python=3.11.* ..."
+$CONDA install -y -p $ENV --force-reinstall "python=3.11.*"
+
+# 顺带把基础 packaging 也补齐（避免后续 pip/compile 出问题）
+echo "[INFO] Reinstall pip/setuptools/wheel ..."
+$CONDA install -y -p $ENV --force-reinstall pip setuptools wheel
+
+echo "[INFO] After repair: verify encodings files exist"
+ls -lah $ENV/lib/python3.11/encodings/__init__.py
+ls -lah $ENV/lib/python3.11/encodings/utf_8.py
+
+echo "[INFO] Python sanity check..."
+$ENV/bin/python -c "import sys, encodings, locale; print('OK', sys.version); print('FSENC', sys.getfilesystemencoding()); print('LOCALE', locale.getpreferredencoding())"
+
+echo "[INFO] Done: $(date)"

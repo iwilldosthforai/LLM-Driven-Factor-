@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N check_py_enc
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=1:mem=2gb
+#PBS -l walltime=00:05:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/check_py_enc.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/check_py_enc.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+ENV=$BASE/conda_envs/qwen311
+
+echo "[INFO] ENV=$ENV"
+echo "[INFO] listing stdlib encodings..."
+ls -lah $ENV/lib/python3.11/encodings 2>&1 | head -n 50 || true
+echo "[INFO] check __init__.py ..."
+ls -lah $ENV/lib/python3.11/encodings/__init__.py 2>&1 || true
+
+echo "[INFO] check encodings/utf_8.py ..."
+ls -lah $ENV/lib/python3.11/encodings/utf_8.py 2>&1 || true
+
+echo "[INFO] Done: $(date)"

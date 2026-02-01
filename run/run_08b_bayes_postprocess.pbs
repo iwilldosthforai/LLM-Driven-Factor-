@@ -1,0 +1,64 @@
+#!/bin/bash
+#PBS -N bt08b_bayes
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=4:mem=16gb
+#PBS -l walltime=00:20:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_08b_bayes.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_08b_bayes.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/08b_bayes_postprocess_weights.py
+ENV=$BASE/conda_envs/qwen311_clean
+
+INFER_JSON=$PROJ/results/infer_lora_output.json
+METRICS=$PROJ/results/alpha_metrics.csv
+OUT_JSON=$PROJ/results/infer_lora_output_bayes.json
+
+CONF=0.60
+PRIOR=metrics            # metrics / equal
+METRIC_COL=sharpe_net     # 你 csv 里是 sharpe_net
+TEMP=1.0
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ=$PROJ"
+echo "[INFO] PY=$PY"
+echo "[INFO] ENV=$ENV"
+echo "[INFO] infer_json=$INFER_JSON"
+echo "[INFO] metrics=$METRICS"
+echo "[INFO] out_json=$OUT_JSON"
+echo "[INFO] prior=$PRIOR conf=$CONF metric_col=$METRIC_COL temp=$TEMP"
+
+module purge
+module load gcc/11.4.0-nscc
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+cd $PROJ
+
+if [ ! -f "$PY" ]; then echo "[FATAL] missing: $PY"; exit 2; fi
+if [ ! -f "$INFER_JSON" ]; then echo "[FATAL] missing: $INFER_JSON (run 08 first)"; exit 2; fi
+if [ ! -f "$METRICS" ]; then echo "[WARN] missing: $METRICS (metrics prior will fallback to equal)"; fi
+
+echo "[INFO] Running 08b Bayes postprocess..."
+python "$PY" \
+  --infer_json "$INFER_JSON" \
+  --metrics_csv "$METRICS" \
+  --prior "$PRIOR" \
+  --metric_col "$METRIC_COL" \
+  --temperature "$TEMP" \
+  --confidence "$CONF" \
+  --out_json "$OUT_JSON"
+
+echo "[INFO] Verify output..."
+ls -lah "$OUT_JSON"
+head -n 80 "$OUT_JSON"
+
+echo "[INFO] Done: $(date)"

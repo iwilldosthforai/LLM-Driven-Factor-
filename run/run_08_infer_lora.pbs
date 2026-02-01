@@ -1,0 +1,51 @@
+#!/bin/bash
+#PBS -N infer08_lora
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=8:mem=32gb:ngpus=1
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_08_infer_lora.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_08_infer_lora.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/08_infer_lora.py
+MODEL=/scratch/users/ntu/shuyan00/nscc_qwen/hf/models/Qwen2.5-7B-Instruct
+ADAPTER=$PROJ/results/sft_lora_qwen
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311_clean
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export TOKENIZERS_PARALLELISM=false
+
+cd $PROJ
+
+# ✅ candidates 用 bash 数组，避免丢参/引号问题
+CANDS=(llm_vol_020 llm_vol_008 llm_rev_007 llm_rev_014 llm_mom_016)
+
+echo "[INFO] python: $(which python)"
+python -V
+
+echo "[INFO] Run inference..."
+python $PY \
+  --base_model_dir $MODEL \
+  --adapter_dir $ADAPTER \
+  --candidates ${CANDS[@]} \
+  --k 5 \
+  --corr_max 0.85 \
+  --turn_cap 1.0 \
+  --out_json $PROJ/results/infer_lora_output.json
+
+echo "[INFO] Done: $(date)"
+ls -lah $PROJ/results | tail -n 80

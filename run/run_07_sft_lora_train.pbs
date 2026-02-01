@@ -1,0 +1,76 @@
+#!/bin/bash
+#PBS -N sft07_lora
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=16:mem=64gb:ngpus=2
+#PBS -l walltime=08:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_07_sft_lora_train.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_07_sft_lora_train.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/07_sft_lora_train.py
+MODEL=/scratch/users/ntu/shuyan00/nscc_qwen/hf/models/Qwen2.5-7B-Instruct
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+# ✅ 防止环境变量污染导致 python 乱跳/codec 问题
+unset PYTHONHOME
+unset PYTHONPATH
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+# ✅ 关键：用干净新环境
+conda activate $BASE/conda_envs/qwen311_clean
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export TOKENIZERS_PARALLELISM=false
+
+cd $PROJ
+
+echo "[INFO] which python: $(which python)"
+python -V
+python - <<'PY'
+import torch
+print("torch:", torch.__version__)
+print("cuda available:", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("gpu0:", torch.cuda.get_device_name(0))
+PY
+
+# sanity checks
+if [ ! -f "$PY" ]; then
+  echo "[FATAL] missing py: $PY"; exit 2
+fi
+if [ ! -f "$PROJ/results/sft_train.jsonl" ]; then
+  echo "[FATAL] missing train jsonl: $PROJ/results/sft_train.jsonl"; exit 2
+fi
+if [ ! -d "$MODEL" ]; then
+  echo "[FATAL] missing model dir: $MODEL"; exit 2
+fi
+
+echo "[INFO] Run SFT LoRA..."
+python $PY \
+  --proj_root $PROJ \
+  --train_jsonl results/sft_train.jsonl \
+  --base_model_dir $MODEL \
+  --out_dir results/sft_lora_qwen \
+  --max_steps 1200 \
+  --bsz 1 \
+  --grad_accum 16 \
+  --lr 2e-4 \
+  --warmup_steps 50 \
+  --max_seq_len 2048
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs:"
+ls -lah $PROJ/results | tail -n 80

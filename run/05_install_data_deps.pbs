@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -N deps_data
+#PBS -q normal
+#PBS -l select=1:ncpus=4:mem=32gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -P personal
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/deps_data.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/deps_data.err
+
+set -euo pipefail
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+
+module purge
+module load gcc/11.4.0-nscc
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+# 用 conda-forge 装数据处理依赖（读写 parquet 必备）
+conda install -y -c conda-forge \
+  pandas numpy pyarrow fastparquet \
+  python-snappy zstandard \
+  tqdm
+
+python - <<'PY'
+import pandas as pd, numpy as np
+import pyarrow as pa, pyarrow.parquet as pq
+print("pandas:", pd.__version__)
+print("numpy:", np.__version__)
+print("pyarrow:", pa.__version__)
+print("OK")
+PY

@@ -1,0 +1,74 @@
+#!/bin/bash
+#PBS -N dpo07b_pairs
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=16:mem=64gb:ngpus=1
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_07b_make_dpo_pairs.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_07b_make_dpo_pairs.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/07b_make_dpo_pairs.py
+ENV=$BASE/conda_envs/qwen311_clean
+
+MODEL=/scratch/users/ntu/shuyan00/nscc_qwen/hf/models/Qwen2.5-7B-Instruct
+SFT_ADAPTER=$PROJ/results/sft_lora_qwen
+
+METRICS=$PROJ/results/alpha_metrics.csv
+CORR_NPY=$PROJ/results/alpha_corr.npy
+CORR_IDX=$PROJ/results/alpha_corr_index.json
+CAND_JSONL=$PROJ/results/llm_candidates.jsonl
+
+OUT=$PROJ/results/dpo_pairs.jsonl
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export TOKENIZERS_PARALLELISM=false
+
+cd $PROJ
+
+echo "[INFO] PROJ=$PROJ"
+echo "[INFO] PY=$PY"
+echo "[INFO] MODEL=$MODEL"
+echo "[INFO] SFT_ADAPTER=$SFT_ADAPTER"
+echo "[INFO] METRICS=$METRICS"
+echo "[INFO] CORR_NPY=$CORR_NPY"
+echo "[INFO] CORR_IDX=$CORR_IDX"
+echo "[INFO] CAND_JSONL=$CAND_JSONL"
+echo "[INFO] OUT=$OUT"
+
+python "$PY" \
+  --proj_root "$PROJ" \
+  --base_model_dir "$MODEL" \
+  --sft_adapter_dir "$SFT_ADAPTER" \
+  --metrics_csv "$METRICS" \
+  --corr_npy "$CORR_NPY" \
+  --corr_index_json "$CORR_IDX" \
+  --candidates_jsonl "$CAND_JSONL" \
+  --out_jsonl results/dpo_pairs.jsonl \
+  --num_prompts 200 \
+  --num_samples_per_prompt 12 \
+  --k 5 \
+  --corr_max 0.85 \
+  --turn_cap 1.0 \
+  --max_new_tokens 256 \
+  --temperature 0.7 \
+  --top_p 0.9
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] OUT preview:"
+ls -lah "$OUT" || true
+head -n 2 "$OUT" || true

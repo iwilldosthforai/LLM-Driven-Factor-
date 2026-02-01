@@ -1,0 +1,86 @@
+#!/bin/bash
+#PBS -N bt05_pf
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=16:mem=64gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_05_portfolio_backtest.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_05_portfolio_backtest.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ_ROOT=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+SCRIPT_PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/05_portfolio_backtest.py
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ_ROOT=$PROJ_ROOT"
+echo "[INFO] SCRIPT_PY=$SCRIPT_PY"
+
+module purge
+module load gcc/11.4.0-nscc
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+
+cd $PROJ_ROOT
+
+PANEL=$PROJ_ROOT/data/processed/panel.parquet
+SEED_SIG=$PROJ_ROOT/data/processed/signals.parquet
+LLM_DIR=$PROJ_ROOT/data/processed/signals_llm
+SEL_JSON=$PROJ_ROOT/results/selected_alphas_v3.json
+METRICS=$PROJ_ROOT/results/alpha_metrics.csv
+
+echo "[INFO] panel=$PANEL"
+echo "[INFO] seed_signals=$SEED_SIG"
+echo "[INFO] llm_dir=$LLM_DIR"
+echo "[INFO] selector=$SEL_JSON"
+echo "[INFO] metrics=$METRICS"
+
+# ---------- sanity checks ----------
+if [ ! -f "$SCRIPT_PY" ]; then
+  echo "[FATAL] missing script: $SCRIPT_PY"
+  exit 2
+fi
+if [ ! -f "$PANEL" ]; then
+  echo "[FATAL] missing panel: $PANEL"
+  exit 2
+fi
+if [ ! -f "$SEED_SIG" ]; then
+  echo "[FATAL] missing seed signals: $SEED_SIG"
+  exit 2
+fi
+if [ ! -f "$SEL_JSON" ]; then
+  echo "[FATAL] missing selector json: $SEL_JSON (run 04 selector first)"
+  exit 2
+fi
+if [ ! -f "$METRICS" ]; then
+  echo "[WARN] missing metrics csv: $METRICS (direction may fallback inside python if needed)"
+fi
+if [ -d "$LLM_DIR" ]; then
+  echo "[INFO] found LLM signals dir: $LLM_DIR"
+  if ! find "$LLM_DIR" -type f -name "*.parquet" | head -n 1 | grep -q . ; then
+    echo "[WARN] LLM signals dir exists but no parquet files found inside."
+  fi
+else
+  echo "[WARN] LLM signals dir not found (will run seed-only backtest)."
+fi
+
+# ---------- run ----------
+echo "[INFO] Running backtest..."
+python $SCRIPT_PY \
+  --top_q 0.2 \
+  --cost_bps 10 \
+  --reb_freq W-FRI \
+  --trade_lag_bdays 1
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs:"
+ls -lah $PROJ_ROOT/results | tail -n 80

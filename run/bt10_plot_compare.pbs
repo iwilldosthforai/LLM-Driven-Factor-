@@ -1,0 +1,53 @@
+#!/bin/bash
+#PBS -N bt10_plot_cmp
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=4:mem=8gb
+#PBS -l walltime=00:15:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_10_plot_compare.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_10_plot_compare.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+ENV=$BASE/conda_envs/qwen311_clean
+
+PY=$BASE/run/10_plot_nav_compare.py
+
+NAV_LLM=$PROJ/results/portfolio_nav_llmweights.csv
+NAV_BAYES_EMA=$PROJ/results/portfolio_nav_llmweights_bayes_ema.csv
+
+OUT_DIR=$PROJ/results
+PREFIX=llm_vs_bayes_ema
+
+module purge
+module load gcc/11.4.0-nscc
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+cd $PROJ
+
+# sanity
+for f in "$PY" "$NAV_LLM" "$NAV_BAYES_EMA"; do
+  if [ ! -f "$f" ]; then
+    echo "[FATAL] missing: $f"
+    exit 2
+  fi
+done
+
+python "$PY" \
+  --inputs "$NAV_LLM" "$NAV_BAYES_EMA" \
+  --labels "llm" "bayes_ema" \
+  --out_dir "$OUT_DIR" \
+  --prefix "$PREFIX" \
+  --roll_weeks 52
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs:"
+ls -lah $OUT_DIR/fig_${PREFIX}_*.png $OUT_DIR/summary_${PREFIX}.csv || true

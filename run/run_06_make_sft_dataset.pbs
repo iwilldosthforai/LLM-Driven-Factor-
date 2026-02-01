@@ -1,0 +1,36 @@
+#!/bin/bash
+#PBS -N sft06_data
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=8:mem=32gb
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_06_make_sft_dataset.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_06_make_sft_dataset.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/06_make_sft_dataset.py
+
+module purge
+module load gcc/11.4.0-nscc
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+cd $PROJ
+
+python $PY \
+  --proj_root $PROJ \
+  --out_jsonl results/sft_train.jsonl \
+  --n_samples 1200 \
+  --pool_size 30 \
+  --k 5 \
+  --corr_max 0.85 \
+  --turn_cap 1.0
+
+echo "[INFO] Done: $(date)"
+ls -lah $PROJ/results | tail -n 40

@@ -1,0 +1,108 @@
+#!/bin/bash
+#PBS -N bt09b_regime
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=4:mem=32gb
+#PBS -l walltime=00:45:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_09b_regime.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/run_09b_regime.err
+
+set -euo pipefail
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+PROJ=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+ENV=$BASE/conda_envs/qwen311_clean
+
+# >>> 改成你保存的 09b 脚本路径（推荐放到 $BASE/run/ 下面）
+PY=$BASE/run/09b_apply_llm_weights_backtest_regime.py
+
+PANEL=$PROJ/data/processed/panel.parquet
+SEED_SIG=$PROJ/data/processed/signals.parquet
+LLM_DIR=$PROJ/data/processed/signals_llm
+
+# Bayes 输出（你现在已有）
+INFER_JSON=$PROJ/results/infer_lora_output_bayes.json
+METRICS=$PROJ/results/alpha_metrics.csv
+
+OUT_NAV=$PROJ/results/portfolio_nav_llmweights_bayes_regime.csv
+OUT_SUM=$PROJ/results/portfolio_summary_llmweights_bayes_regime.txt
+
+# --- knobs (可以先用默认，不用改) ---
+REB_FREQ=W-FRI
+TRADE_LAG=1
+COST_BPS=10
+SLIP_BPS=0
+
+# base preprocess (建议先保持和你现在一致：clip + ema)
+CLIP_Z=6.0
+EMA_ETA=0.30
+
+# regime / vol targeting
+REGIME_MODE=simple
+VOL_TARGET_MODE=on
+VOL_TARGET_LOOKBACK=52
+VOL_SCALE_MIN=0.4
+VOL_SCALE_MAX=1.6
+
+module purge
+module load gcc/11.4.0-nscc
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $ENV
+
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ=$PROJ"
+echo "[INFO] ENV=$ENV"
+echo "[INFO] PY=$PY"
+echo "[INFO] PANEL=$PANEL"
+echo "[INFO] SEED_SIG=$SEED_SIG"
+echo "[INFO] LLM_DIR=$LLM_DIR"
+echo "[INFO] INFER_JSON=$INFER_JSON"
+echo "[INFO] METRICS=$METRICS"
+echo "[INFO] OUT_NAV=$OUT_NAV"
+echo "[INFO] OUT_SUM=$OUT_SUM"
+echo "[INFO] REB_FREQ=$REB_FREQ TRADE_LAG=$TRADE_LAG"
+echo "[INFO] COST_BPS=$COST_BPS SLIP_BPS=$SLIP_BPS"
+echo "[INFO] CLIP_Z=$CLIP_Z EMA_ETA=$EMA_ETA"
+echo "[INFO] REGIME_MODE=$REGIME_MODE VOL_TARGET_MODE=$VOL_TARGET_MODE"
+
+# sanity checks
+for f in "$PY" "$PANEL" "$SEED_SIG" "$INFER_JSON"; do
+  if [ ! -f "$f" ]; then
+    echo "[FATAL] missing: $f"
+    exit 2
+  fi
+done
+if [ ! -f "$METRICS" ]; then
+  echo "[WARN] metrics not found: $METRICS (direction sign will default to +1)"
+fi
+
+cd $PROJ
+
+echo "[INFO] Running 09b..."
+python "$PY" \
+  --panel "$PANEL" \
+  --seed_signals "$SEED_SIG" \
+  --llm_dir "$LLM_DIR" \
+  --infer_json "$INFER_JSON" \
+  --metrics_csv "$METRICS" \
+  --reb_freq "$REB_FREQ" \
+  --trade_lag_bdays "$TRADE_LAG" \
+  --cost_bps "$COST_BPS" \
+  --slippage_bps "$SLIP_BPS" \
+  --clip_z "$CLIP_Z" \
+  --ema_eta "$EMA_ETA" \
+  --regime_mode "$REGIME_MODE" \
+  --vol_target_mode "$VOL_TARGET_MODE" \
+  --vol_target_lookback "$VOL_TARGET_LOOKBACK" \
+  --vol_scale_min "$VOL_SCALE_MIN" \
+  --vol_scale_max "$VOL_SCALE_MAX" \
+  --out_nav "$OUT_NAV" \
+  --out_summary "$OUT_SUM"
+
+echo "[INFO] Done: $(date)"
+echo "[INFO] Outputs:"
+ls -lah $PROJ/results | grep -E "portfolio_nav_llmweights_bayes_regime|portfolio_summary_llmweights_bayes_regime" || true

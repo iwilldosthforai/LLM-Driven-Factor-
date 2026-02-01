@@ -1,0 +1,38 @@
+#!/bin/bash
+#PBS -N qwen_gen_candidates
+#PBS -q normal
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -P personal
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/gen_candidates.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/gen_candidates.err
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export QWEN_MODEL_DIR=$BASE/hf/models/Qwen2.5-7B-Instruct
+export BASE=$BASE
+
+# output
+mkdir -p $BASE/results
+
+# generate 300 candidates
+export N_CANDIDATES=300
+export OUT_JSONL=$BASE/results/llm_candidates.jsonl
+export SEED=42
+
+python $BASE/run/01_llm_generate_candidates.py
+
+echo "Preview:"
+head -n 3 $BASE/results/llm_candidates.jsonl
+echo "Lines:"
+wc -l $BASE/results/llm_candidates.jsonl

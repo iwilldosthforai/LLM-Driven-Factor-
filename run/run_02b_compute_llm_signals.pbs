@@ -1,0 +1,79 @@
+#!/bin/bash
+#PBS -N llm_signals_02b
+#PBS -q normal
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=0
+#PBS -l walltime=02:00:00
+#PBS -P personal
+#PBS -j oe
+#PBS -o /home/users/ntu/shuyan00/scratch/nscc_qwen/logs/02b_llm_signalsout.out
+#PBS -e /home/users/ntu/shuyan00/scratch/nscc_qwen/logs/02b_llm_signalserr.err
+
+set -euo pipefail
+
+# 你的 qwen 环境根（conda、hf cache）
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+
+# 你的量化项目根（panel 在这里）
+PROJ_ROOT=/home/users/ntu/shuyan00/scratch/nscc_qwen/basicquant
+
+# 你的 02b 脚本位置（你说在这个 run 目录）
+SCRIPT_PY=/home/users/ntu/shuyan00/scratch/nscc_qwen/run/02b_compute_llm_signals.py
+
+IN_PANEL=$PROJ_ROOT/data/processed/panel.parquet
+CANDS_JSONL=$PROJ_ROOT/results/llm_candidates.jsonl
+OUT_DIR=$PROJ_ROOT/data/processed/signals_llm
+
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+echo "[INFO] BASE=$BASE"
+echo "[INFO] PROJ_ROOT=$PROJ_ROOT"
+echo "[INFO] SCRIPT_PY=$SCRIPT_PY"
+echo "[INFO] IN_PANEL=$IN_PANEL"
+echo "[INFO] CANDS_JSONL=$CANDS_JSONL"
+echo "[INFO] OUT_DIR=$OUT_DIR"
+
+# 先检查文件是否存在（避免排队后才失败）
+[[ -f "$SCRIPT_PY" ]]   || { echo "[FATAL] missing script: $SCRIPT_PY"; exit 2; }
+[[ -f "$IN_PANEL" ]]    || { echo "[FATAL] missing panel: $IN_PANEL"; exit 2; }
+[[ -f "$CANDS_JSONL" ]] || { echo "[FATAL] missing candidates: $CANDS_JSONL"; exit 2; }
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate $BASE/conda_envs/qwen311
+
+export HF_HOME=$BASE/hf/home
+export HF_HUB_CACHE=$BASE/hf/cache
+export QWEN_MODEL_DIR=$BASE/hf/models/Qwen2.5-7B-Instruct
+
+mkdir -p "$(dirname "$OUT_DIR")"
+mkdir -p /home/users/ntu/shuyan00/scratch/nscc_qwen/logs
+
+cd "$PROJ_ROOT"
+
+echo "[INFO] Running 02b ..."
+# ✅ 优先用参数（如果你的 02b 支持）
+python "$SCRIPT_PY" --in_panel "$IN_PANEL" --candidates "$CANDS_JSONL" --out_dir "$OUT_DIR" || \
+
+python "$SCRIPT_PY"
+
+echo "[INFO] Sanity check ..."
+python - << PY
+import os, pandas as pd
+path = "$OUT_DIR"
+print("exists:", os.path.exists(path), "path:", path)
+df = pd.read_parquet(path)
+print("columns:", list(df.columns))
+need={"date","ticker","alpha","signal"}
+miss=need-set(df.columns)
+if miss:
+    raise SystemExit(f"[FATAL] missing columns: {miss}")
+print("rows:", len(df))
+print("alphas:", df["alpha"].nunique())
+print("tickers:", df["ticker"].nunique())
+print(df.head(3))
+PY
+
+echo "[INFO] Done: $(date)"

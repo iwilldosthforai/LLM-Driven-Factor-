@@ -1,0 +1,44 @@
+#!/bin/bash
+#PBS -N qwen_env
+#PBS -q normal
+#PBS -l select=1:ncpus=8:mem=64gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -P personal
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/qwen_env.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/qwen_env.err
+
+set -euo pipefail
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+cd "$BASE/run"
+
+module purge
+module load gcc/11.4.0-nscc
+
+MF="$BASE/apps/miniforge3"
+ENV_DIR="$BASE/conda_envs/qwen311"
+
+echo "=== Init conda ==="
+source "$MF/etc/profile.d/conda.sh"
+
+if [ ! -d "$ENV_DIR" ]; then
+  echo "=== Creating env at $ENV_DIR ==="
+  conda create -y -p "$ENV_DIR" python=3.11
+fi
+
+conda activate "$ENV_DIR"
+python -V
+
+echo "=== Installing packages ==="
+python -m pip install -U pip
+python -m pip install -U \
+  "transformers>=4.44" accelerate safetensors huggingface_hub sentencepiece protobuf
+
+echo "=== Sanity check ==="
+python - <<'PY'
+import pkgutil
+print("transformers?", pkgutil.find_loader("transformers") is not None)
+print("huggingface_hub?", pkgutil.find_loader("huggingface_hub") is not None)
+PY
+
+echo "DONE: env ready at $ENV_DIR"

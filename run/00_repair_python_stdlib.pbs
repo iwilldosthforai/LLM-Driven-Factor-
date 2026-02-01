@@ -1,0 +1,41 @@
+
+#!/bin/bash
+#PBS -N fix_conda_py
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=2:mem=8gb
+#PBS -l walltime=00:30:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/fix_conda_py.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/fix_conda_py.err
+
+set -euo pipefail
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+MAMBA_ROOT=$BASE/apps/miniforge3
+ENV_DIR=$BASE/conda_envs/qwen311
+
+module purge
+module load gcc/11.4.0-nscc
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
+source $MAMBA_ROOT/etc/profile.d/conda.sh
+
+echo "[INFO] Removing corrupted cached python package..."
+rm -rf "$MAMBA_ROOT/pkgs/python-3.11.14-hd63d673_2_cpython" || true
+rm -rf "$MAMBA_ROOT/pkgs/python-3.11.14-hd63d673_2_cpython.conda" || true
+rm -rf "$MAMBA_ROOT/pkgs/python-3.11.14-hd63d673_2_cpython.tar.bz2" || true
+
+echo "[INFO] Cleaning conda caches..."
+conda clean -a -y
+
+echo "[INFO] Force reinstall python into env: $ENV_DIR"
+conda install -y -p "$ENV_DIR" -c conda-forge --force-reinstall "python=3.11"
+
+echo "[INFO] Smoke test python..."
+"$ENV_DIR/bin/python" -c "import encodings, sys; print('OK encodings', sys.version)"
+
+echo "[INFO] Done."
+
+

@@ -1,0 +1,44 @@
+#!/bin/bash
+#PBS -N py_sanity
+#PBS -q normal
+#PBS -P personal
+#PBS -l select=1:ncpus=2:mem=8gb
+#PBS -l walltime=00:10:00
+#PBS -j oe
+#PBS -o /scratch/users/ntu/shuyan00/nscc_qwen/logs/py_sanity.out
+#PBS -e /scratch/users/ntu/shuyan00/nscc_qwen/logs/py_sanity.err
+
+set -euo pipefail
+echo "[INFO] Host: $(hostname)"
+echo "[INFO] Start: $(date)"
+
+BASE=/scratch/users/ntu/shuyan00/nscc_qwen
+ENV=$BASE/conda_envs/qwen311
+
+module purge
+module load gcc/11.4.0-nscc
+module load cuda/12.2.2 || true
+
+# 关键：强制干净环境，避免污染 Python 启动
+unset PYTHONHOME
+unset PYTHONPATH
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export PYTHONNOUSERSITE=1
+
+source $BASE/apps/miniforge3/etc/profile.d/conda.sh
+conda activate "$ENV"
+
+echo "[INFO] which python: $(which python)"
+python -V
+
+python - <<'PY'
+import sys, codecs
+print("sys.executable:", sys.executable)
+print("utf-8 lookup:", codecs.lookup("utf-8"))
+import encodings
+print("encodings file:", encodings.__file__)
+print("OK: python startup is healthy")
+PY
+
+echo "[INFO] Done: $(date)"
